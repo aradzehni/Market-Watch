@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import re
 import os
 import time
@@ -6,8 +5,10 @@ import pandas as pd
 from bs4 import BeautifulSoup as bs
 from io import StringIO
 import requests
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
@@ -76,14 +77,20 @@ def process_htmls(htmls, category):
 
 # --- Function to scrape all pages ---
 def tgju_crawler(link, max_retries=3):
-    """Scrapes all pages from a URL using Selenium, tries up to 3 times."""
+    """Scrapes all pages from a URL using Selenium, tries up to 3 times with better error handling."""
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # No browser window
+    chrome_options.add_argument("--disable-notifications")  # Disable pop-ups
+    chrome_options.add_argument("--no-sandbox")  # Improve stability
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")  # Mimic a real browser
+
     driver = webdriver.Chrome(options=chrome_options)
     
     for attempt in range(max_retries):
         try:
             driver.get(link)
+            time.sleep(2)
+            driver.refresh()
             WebDriverWait(driver, 50).until(EC.presence_of_element_located((By.CLASS_NAME, "paginate_button")))
             pagination_buttons = driver.find_elements(By.CLASS_NAME, "paginate_button")
             total_pages = int(pagination_buttons[-2].text)  # Last button before "Next"
@@ -98,7 +105,15 @@ def tgju_crawler(link, max_retries=3):
                 next_button = WebDriverWait(driver, 50).until(EC.element_to_be_clickable((By.ID, "DataTables_Table_0_next")))
                 if "disabled" in next_button.get_attribute("class"):
                     break
-                next_button.click()
+                
+                # Scroll to the button to avoid overlap and click
+                driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
+                time.sleep(2)
+                driver.execute_script("window.scrollBy(0, -400);")
+                time.sleep(2)  # Wait for scroll and ad adjustment
+                action = ActionChains(driver)
+                action.move_to_element(next_button).click().perform()
+                
                 time.sleep(2)  # Wait to avoid overwhelming the site
             
             driver.quit()
@@ -119,20 +134,28 @@ def update_tgju_data():
             os.makedirs(folder)
             print(f"Created folder: {folder}")
 
-    # Read categories from TGJU-DATA.txt
-    try:
-        with open('TGJU-DATA.txt', 'r', encoding='utf-8') as file:
-            readme_content = file.read()
-        pattern = re.compile(r'(\S+)\s*\(.*?\)\s*=\s*(https?://\S+)')
-        links_dict = {match.group(1): match.group(2) for match in pattern.finditer(readme_content)}
-        categories = list(links_dict.keys())
-    except FileNotFoundError:
-        print("Oops! TGJU-DATA.txt is missing. Please add it with category links.")
-        return
-    except Exception as e:
-        print(f"Problem reading TGJU-DATA.txt: {e}")
-        return
+    # Define categories and their URLs directly in the code
+    links_dict = {
+        "price_dollar_rl (قیمت دلار آزاد)": "https://www.tgju.org/profile/price_dollar_rl/history",
+        "mesghal (مثقال طلا)": "https://www.tgju.org/profile/mesghal/history",
+        "hobab_ab_shode_mesghal (حباب آب شده)": "https://www.tgju.org/profile/gold_17_transfer/history",
+        "mesghal_bedone_hobab (مثقال بدون حباب)": "https://www.tgju.org/profile/gold_17/history",
+        "gold_18 (طلای 18 عیار / 750)": "https://www.tgju.org/profile/geram18/history",
+        "gold_24 (طلای ۲۴ عیار)": "https://www.tgju.org/profile/geram24/history",
+        "gold_740 (طلای 18 عیار / 740)": "https://www.tgju.org/profile/gold_740k/history",
+        "ab_shode_kamtar_az_K (آبشده کمتر از کیلو)": "https://www.tgju.org/profile/gold_world_futures/history",
+        "price_aed (قیمت درهم)": "https://www.tgju.org/profile/price_aed/history",
+        "seke_baharazadi (قیمت سکه بهار آزادی)": "https://www.tgju.org/profile/sekeb/history",
+        "seke_nim (قیمت نیم سکه)": "https://www.tgju.org/profile/nim/history",
+        "seke_emami (قیمت سکه امامی)": "https://www.tgju.org/profile/sekee/history",
+        "seke_rob (قیمت ربع سکه)": "https://www.tgju.org/profile/rob/history",
+        "nima_sell_usd (نرخ فروش دلار نیما)": "https://www.tgju.org/profile/nima_sell_usd/history",
+        "nima_buy_usd (نرخ خرید دلار نیما)": "https://www.tgju.org/profile/nima_buy_usd/history",
+        "price_cny (قیمت یوان چین)": "https://www.tgju.org/profile/price_cny/history"
+    }
+    categories = list(links_dict.keys())
     
+
     # Find categories not in the database yet
     database_dir = "TGJU Database"
     existing_categories = [f.split()[1].split('.')[0] for f in os.listdir(database_dir) if f.startswith("database")]
