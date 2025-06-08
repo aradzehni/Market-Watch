@@ -4,7 +4,7 @@ This script grabs financial data from TGJU and saves it in Excel files.
 ## What You Need
 - Python 3 (like the toy’s batteries)
 - Chrome browser and chromedriver (get it from [here](https://chromedriver.chromium.org/downloads), match your Chrome version)
-- Install these tools: pip install selenium pandas beautifulsoup4 requests
+- **Install these tools: pip install selenium pandas beautifulsoup4 requests**
 
 ## Setup
 1. Make these folders (or the script will make them):
