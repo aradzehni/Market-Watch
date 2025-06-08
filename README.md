@@ -18,6 +18,6 @@ This script grabs financial data from TGJU and saves it in Excel files.
 It’ll scrape data, update files, and add a 50-day average!
 
 ## Notes
-- If it breaks, check your internet or TGJU-DATA.txt.
+- If it breaks, check your internet or text me on Telegram @aradzehni.
 - Be nice to the website—don’t run it too much!
 - First time, it's going to take a long time.
